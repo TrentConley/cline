@@ -135,6 +135,18 @@ export class Controller {
 
 	async initTask(task?: string, images?: string[], files?: string[], historyItem?: HistoryItem) {
 		await this.clearTask() // ensures that an existing task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
+
+		// Check if user is authenticated before allowing task creation
+		if (!this.authService.isAuthenticated()) {
+			getHostBridgeProvider().windowClient.showMessage(
+				ShowMessageRequest.create({
+					type: ShowMessageType.ERROR,
+					message: "Authentication required. Please sign in to create tasks.",
+				}),
+			)
+			throw new Error("Authentication required. Please sign in to create tasks.")
+		}
+
 		const {
 			apiConfiguration,
 			autoApprovalSettings,

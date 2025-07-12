@@ -16,6 +16,7 @@ import WorkspaceTracker from "@integrations/workspace/WorkspaceTracker"
 import { BrowserSession } from "@services/browser/BrowserSession"
 import { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import { McpHub } from "@services/mcp/McpHub"
+import { AuthService } from "@services/auth/AuthService"
 import { AutoApprovalSettings } from "@shared/AutoApprovalSettings"
 import { BrowserSettings } from "@shared/BrowserSettings"
 import {
@@ -406,6 +407,15 @@ export class ToolExecutor {
 	}
 
 	public async executeTool(block: ToolUse): Promise<void> {
+		// Check if user is authenticated before allowing any tool execution
+		const authService = AuthService.getInstance()
+		if (!authService.isAuthenticated()) {
+			await this.say("error", "Authentication required. Please sign in to use tools.")
+			this.pushToolResult(formatResponse.toolError("Authentication required. Please sign in to use tools."), block)
+			await this.saveCheckpoint()
+			return
+		}
+
 		if (this.taskState.didRejectTool) {
 			// ignore any tool content after user has rejected tool once
 			if (!block.partial) {

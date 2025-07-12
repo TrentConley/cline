@@ -43,7 +43,7 @@ export class AuthService {
 	 * @param controller - Optional reference to the Controller instance.
 	 */
 	private constructor(context: vscode.ExtensionContext, config: ServiceConfig, authProvider?: any) {
-		const providerName = authProvider || "firebase"
+		const providerName = authProvider || "oidc"
 		this._config = Object.assign({ URI: DefaultClineAccountURI }, config)
 
 		// Fetch AuthProviders
@@ -51,55 +51,20 @@ export class AuthService {
 		// ex.  https://app.cline.bot/api/v1/auth/providers
 
 		const authProvidersConfigs = [
+			// Only OIDC Provider Configuration - Users must authenticate via OIDC
 			{
-				name: "firebase",
+				name: "oidc",
 				config: {
-					apiKey: "AIzaSyC5rx59Xt8UgwdU3PCfzUF7vCwmp9-K2vk",
-					authDomain: "cline-prod.firebaseapp.com",
-					projectId: "cline-prod",
-					storageBucket: "cline-prod.firebasestorage.app",
-					messagingSenderId: "941048379330",
-					appId: "1:941048379330:web:45058eedeefc5cdfcc485b",
+					issuer: "https://your-oidc-provider.com",
+					clientId: "your-client-id",
+					clientSecret: "your-client-secret", // Optional for public clients
+					redirectUri: `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`,
+					scopes: ["openid", "profile", "email"],
+					additionalParams: {
+						// Add any additional OAuth parameters your provider requires
+					},
 				},
-				// Uncomment for staging environment
-				// config: {
-				// 	apiKey: "AIzaSyASSwkwX1kSO8vddjZkE5N19QU9cVQ0CIk",
-				// 	authDomain: "cline-staging.firebaseapp.com",
-				// 	projectId: "cline-staging",
-				// 	storageBucket: "cline-staging.firebasestorage.app",
-				// 	messagingSenderId: "853479478430",
-				// 	appId: "1:853479478430:web:2de0dba1c63c3262d4578f",
-				// },
-				// Uncomment for local development environment
-				// config: {
-				// 	apiKey: "AIzaSyASSwkwX1kSO8vddjZkE5N19QU9cVQ0CIk",
-				// 	authDomain: "cline-staging.firebaseapp.com",
-				// 	projectId: "cline-staging",
-				// 	storageBucket: "cline-staging.firebasestorage.app",
-				// 	messagingSenderId: "853479478430",
-				// 	appId: "1:853479478430:web:2de0dba1c63c3262d4578f",
-				// },
-				// config: {
-				// 	apiKey: "AIzaSyD8wtkd1I-EICuAg6xgAQpRdwYTvwxZG2w",
-				// 	authDomain: "cline-preview.firebaseapp.com",
-				// 	projectId: "cline-preview",
-				// }
 			},
-			// OIDC Provider Configuration
-			// Uncomment and configure for your OIDC provider
-			// {
-			// 	name: "oidc",
-			// 	config: {
-			// 		issuer: "https://your-oidc-provider.com",
-			// 		clientId: "your-client-id",
-			// 		clientSecret: "your-client-secret", // Optional for public clients
-			// 		redirectUri: `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`,
-			// 		scopes: ["openid", "profile", "email"],
-			// 		additionalParams: {
-			// 			// Add any additional OAuth parameters your provider requires
-			// 		}
-			// 	}
-			// },
 		]
 
 		// Merge authProviders with availableAuthProviders
@@ -166,6 +131,22 @@ export class AuthService {
 		// TODO: This may need to be dependant on the auth provider
 		// Return the ID token from the user object
 		return this._provider.provider.getAuthToken(this._user)
+	}
+
+	/**
+	 * Check if the user is currently authenticated
+	 * @returns true if authenticated, false otherwise
+	 */
+	isAuthenticated(): boolean {
+		return this._authenticated && this._user !== null
+	}
+
+	/**
+	 * Get the current user information if authenticated
+	 * @returns user object if authenticated, null otherwise
+	 */
+	getCurrentUser(): any {
+		return this.isAuthenticated() ? this._user : null
 	}
 
 	private _setProvider(providerName: string): void {
