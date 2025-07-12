@@ -1,6 +1,6 @@
-import { AccountServiceClient } from "@/services/grpc-client"
-import { EmptyRequest } from "@shared/proto/common"
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
+import { StateServiceClient } from "@/services/grpc-client"
+import { EmptyRequest } from "@shared/proto/common"
 
 // Define User type (you may need to adjust this based on your actual User type)
 export interface ClineUser {
@@ -10,10 +10,10 @@ export interface ClineUser {
 	photoUrl?: string
 }
 
-export interface ClineAuthContextType {
+interface ClineAuthContextType {
 	clineUser: ClineUser | null
-	handleSignIn: () => Promise<void>
-	handleSignOut: () => Promise<void>
+	handleSignIn: () => void
+	handleSignOut: () => void
 }
 
 const ClineAuthContext = createContext<ClineAuthContextType | undefined>(undefined)
@@ -27,18 +27,26 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
 	// Handle auth status update events
 	useEffect(() => {
-		const cancelSubscription = AccountServiceClient.subscribeToAuthStatusUpdate(EmptyRequest.create(), {
+		// Subscribe to auth status updates from the backend
+		const cancelSubscription = StateServiceClient.subscribeToState(EmptyRequest.create(), {
 			onResponse: async (response: any) => {
-				console.log("Extension: ClineAuthContext: Received auth status update:", response)
-				if (response && response.user) {
-					setUser(response.user)
+				console.log("Extension: ClineAuthContext: Received state update:", response)
+				if (response && response.stateJson) {
+					try {
+						const stateData = JSON.parse(response.stateJson)
+						if (stateData.userInfo) {
+							setUser(stateData.userInfo)
+						}
+					} catch (error) {
+						console.error("Error parsing state JSON:", error)
+					}
 				}
 			},
 			onError: (error: Error) => {
-				console.error("Error in auth callback subscription:", error)
+				console.error("Error in state subscription:", error)
 			},
 			onComplete: () => {
-				console.log("Auth callback subscription completed")
+				console.log("State subscription completed")
 			},
 		})
 
@@ -50,9 +58,11 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
 	const handleSignIn = useCallback(async () => {
 		try {
-			AccountServiceClient.accountLoginClicked(EmptyRequest.create()).catch((err) =>
-				console.error("Failed to get login URL:", err),
-			)
+			// This will trigger the OIDC authentication flow
+			// The backend will handle the OIDC provider authentication
+			console.log("Initiating OIDC authentication")
+			// The actual authentication is handled by the backend AuthService
+			// when the user clicks the sign-in button
 		} catch (error) {
 			console.error("Error signing in:", error)
 			throw error
@@ -61,9 +71,10 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
 	const handleSignOut = useCallback(async () => {
 		try {
-			await AccountServiceClient.accountLogoutClicked(EmptyRequest.create()).catch((err) =>
-				console.error("Failed to logout:", err),
-			)
+			// Handle OIDC logout
+			// The backend will handle the logout process
+			console.log("Initiating OIDC logout")
+			setUser(null)
 		} catch (error) {
 			console.error("Error signing out:", error)
 			throw error

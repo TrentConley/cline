@@ -26,7 +26,7 @@ Run the following commands in order:
 
 ```bash
 # Install dependencies
-npm install
+npm install:all
 
 # Build the webview
 npm run build:webview

@@ -480,7 +480,7 @@ export class Controller {
 
 	async handleAuthCallback(customToken: string, provider: string | null = null) {
 		try {
-			await this.authService.handleAuthCallback(customToken, provider ? provider : "google")
+			await this.authService.handleAuthCallback(customToken, provider ? provider : "oidc")
 
 			const clineProvider: ApiProvider = "cline"
 			await updateGlobalState(this.context, "apiProvider", clineProvider)

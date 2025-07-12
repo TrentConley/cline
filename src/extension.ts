@@ -303,13 +303,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				const authService = AuthService.getInstance()
 				console.log("Auth callback received:", uri.toString())
 
-				const token = query.get("idToken")
 				const code = query.get("code") // For OIDC authorization code flow
 				const state = query.get("state")
 				const provider = query.get("provider")
 
 				console.log("Auth callback received:", {
-					token: token,
 					code: code,
 					state: state,
 					provider: provider,
@@ -333,12 +331,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 
 				// Handle OIDC authorization code flow
-				if (code && provider === "oidc") {
-					await visibleWebview?.controller.handleAuthCallback(code, provider)
-				}
-				// Handle Firebase ID token flow
-				else if (token) {
-					await visibleWebview?.controller.handleAuthCallback(token, provider)
+				if (code) {
+					await visibleWebview?.controller.handleAuthCallback(code, "oidc")
 				}
 				break
 			}

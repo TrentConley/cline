@@ -3,7 +3,6 @@ import crypto from "crypto"
 import { EmptyRequest, String } from "../../shared/proto/common"
 import { AuthState } from "../../shared/proto/account"
 import { StreamingResponseHandler, getRequestRegistry } from "@/core/controller/grpc-handler"
-import { FirebaseAuthProvider } from "./providers/FirebaseAuthProvider"
 import { OidcAuthProvider } from "./providers/OidcAuthProvider"
 import { Controller } from "@/core/controller"
 import { storeSecret } from "@/core/storage/state"
@@ -19,7 +18,6 @@ type ServiceConfig = {
 }
 
 const availableAuthProviders = {
-	firebase: FirebaseAuthProvider,
 	oidc: OidcAuthProvider,
 	// Add other providers here as needed
 }

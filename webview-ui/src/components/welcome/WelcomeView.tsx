@@ -4,21 +4,15 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { validateApiConfiguration } from "@/utils/validate"
 import ApiOptions from "@/components/settings/ApiOptions"
 import ClineLogoWhite from "@/assets/ClineLogoWhite"
-import { AccountServiceClient, ModelsServiceClient, StateServiceClient } from "@/services/grpc-client"
-import { EmptyRequest, BooleanRequest } from "@shared/proto/common"
+import { StateServiceClient } from "@/services/grpc-client"
+import { BooleanRequest } from "@shared/proto/common"
 
 const WelcomeView = memo(() => {
 	const { apiConfiguration } = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
-	const [showApiOptions, setShowApiOptions] = useState(false)
+	const [showApiOptions, setShowApiOptions] = useState(true)
 
 	const disableLetsGoButton = apiErrorMessage != null
-
-	const handleLogin = () => {
-		AccountServiceClient.accountLoginClicked(EmptyRequest.create()).catch((err) =>
-			console.error("Failed to get login URL:", err),
-		)
-	}
 
 	const handleSubmit = async () => {
 		try {
@@ -50,22 +44,8 @@ const WelcomeView = memo(() => {
 				</p>
 
 				<p className="text-[var(--vscode-descriptionForeground)]">
-					Sign up for an account to get started for free, or use an API key that provides access to models like Claude
-					3.7 Sonnet.
+					Please configure your API key to access models like Claude 3.7 Sonnet.
 				</p>
-
-				<VSCodeButton appearance="primary" onClick={handleLogin} className="w-full mt-1">
-					Get Started for Free
-				</VSCodeButton>
-
-				{!showApiOptions && (
-					<VSCodeButton
-						appearance="secondary"
-						onClick={() => setShowApiOptions(!showApiOptions)}
-						className="mt-2.5 w-full">
-						Use your own API key
-					</VSCodeButton>
-				)}
 
 				<div className="mt-4.5">
 					{showApiOptions && (

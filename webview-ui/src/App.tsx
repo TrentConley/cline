@@ -3,8 +3,9 @@ import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
-import AccountView from "./components/account/AccountView"
+import SignInView from "./components/auth/SignInView"
 import { useExtensionState } from "./context/ExtensionStateContext"
+import { useClineAuth } from "./context/ClineAuthContext"
 import { UiServiceClient } from "./services/grpc-client"
 import McpView from "./components/mcp/configuration/McpConfigurationView"
 import { Providers } from "./Providers"
@@ -19,7 +20,6 @@ const AppContent = () => {
 		mcpTab,
 		showSettings,
 		showHistory,
-		showAccount,
 		showAnnouncement,
 		setShowAnnouncement,
 		setShouldShowAnnouncement,
@@ -27,9 +27,10 @@ const AppContent = () => {
 		navigateToHistory,
 		hideSettings,
 		hideHistory,
-		hideAccount,
 		hideAnnouncement,
 	} = useExtensionState()
+
+	const { clineUser } = useClineAuth()
 
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
@@ -50,6 +51,11 @@ const AppContent = () => {
 		return null
 	}
 
+	// Show sign-in view if user is not authenticated
+	if (!clineUser) {
+		return <SignInView />
+	}
+
 	return (
 		<>
 			{showWelcome ? (
@@ -59,11 +65,10 @@ const AppContent = () => {
 					{showSettings && <SettingsView onDone={hideSettings} />}
 					{showHistory && <HistoryView onDone={hideHistory} />}
 					{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
-					{showAccount && <AccountView onDone={hideAccount} />}
 					{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 					<ChatView
 						showHistoryView={navigateToHistory}
-						isHidden={showSettings || showHistory || showMcp || showAccount}
+						isHidden={showSettings || showHistory || showMcp}
 						showAnnouncement={showAnnouncement}
 						hideAnnouncement={hideAnnouncement}
 					/>
