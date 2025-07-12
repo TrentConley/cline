@@ -264,15 +264,25 @@ After configuring OIDC authentication:
 
 1. Build the extension:
    ```bash
-   npm run build
-   ```
-
-2. Package the extension:
-   ```bash
    npm run package
    ```
 
-3. Install the generated `.vsix` file in your organization's VSCode instances
+2. Package the extension as VSIX:
+   ```bash
+   npx vsce package
+   ```
+
+3. Install the generated `.vsix` file in your organization's VSCode instances:
+   ```bash
+   code --install-extension cline-*.vsix
+   ```
+
+### Alternative Build Method
+
+You can also use the automated script (though the manual method above is more reliable):
+```bash
+npm run build:vsix
+```
 
 ## Support
 
