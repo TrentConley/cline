@@ -304,11 +304,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				console.log("Auth callback received:", uri.toString())
 
 				const token = query.get("idToken")
+				const code = query.get("code") // For OIDC authorization code flow
 				const state = query.get("state")
 				const provider = query.get("provider")
 
 				console.log("Auth callback received:", {
 					token: token,
+					code: code,
 					state: state,
 					provider: provider,
 				})
@@ -330,9 +332,61 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 
-				if (token) {
+				// Handle OIDC authorization code flow
+				if (code && provider === "oidc") {
+					await visibleWebview?.controller.handleAuthCallback(code, provider)
+				}
+				// Handle Firebase ID token flow
+				else if (token) {
 					await visibleWebview?.controller.handleAuthCallback(token, provider)
-					// await authService.handleAuthCallback(token)
+				}
+				break
+			}
+			case "/oidc": {
+				const authService = AuthService.getInstance()
+				console.log("OIDC callback received:", uri.toString())
+
+				const code = query.get("code")
+				const state = query.get("state")
+				const error = query.get("error")
+				const errorDescription = query.get("error_description")
+
+				console.log("OIDC callback received:", {
+					code: code,
+					state: state,
+					error: error,
+					errorDescription: errorDescription,
+				})
+
+				// Handle OAuth errors
+				if (error) {
+					await getHostBridgeProvider().windowClient.showMessage(
+						ShowMessageRequest.create({
+							type: ShowMessageType.ERROR,
+							message: `OIDC Authentication failed: ${error}${errorDescription ? ` - ${errorDescription}` : ""}`,
+						}),
+					)
+					return
+				}
+
+				// Verify state parameter
+				if (authService.authNonce !== state) {
+					const userConfirmation = (
+						await getHostBridgeProvider().windowClient.showMessage(
+							ShowMessageRequest.create({
+								type: ShowMessageType.ERROR,
+								message: "Invalid OIDC auth state. Continue anyway?",
+							}),
+						)
+					)?.selectedOption
+					if (userConfirmation === "Cancel") {
+						console.log("User declined to continue with OIDC callback due to state mismatch")
+						return
+					}
+				}
+
+				if (code) {
+					await visibleWebview?.controller.handleAuthCallback(code, "oidc")
 				}
 				break
 			}

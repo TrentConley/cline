@@ -4,6 +4,7 @@ import { EmptyRequest, String } from "../../shared/proto/common"
 import { AuthState } from "../../shared/proto/account"
 import { StreamingResponseHandler, getRequestRegistry } from "@/core/controller/grpc-handler"
 import { FirebaseAuthProvider } from "./providers/FirebaseAuthProvider"
+import { OidcAuthProvider } from "./providers/OidcAuthProvider"
 import { Controller } from "@/core/controller"
 import { storeSecret } from "@/core/storage/state"
 
@@ -19,6 +20,7 @@ type ServiceConfig = {
 
 const availableAuthProviders = {
 	firebase: FirebaseAuthProvider,
+	oidc: OidcAuthProvider,
 	// Add other providers here as needed
 }
 
@@ -83,6 +85,21 @@ export class AuthService {
 				// 	projectId: "cline-preview",
 				// }
 			},
+			// OIDC Provider Configuration
+			// Uncomment and configure for your OIDC provider
+			// {
+			// 	name: "oidc",
+			// 	config: {
+			// 		issuer: "https://your-oidc-provider.com",
+			// 		clientId: "your-client-id",
+			// 		clientSecret: "your-client-secret", // Optional for public clients
+			// 		redirectUri: `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`,
+			// 		scopes: ["openid", "profile", "email"],
+			// 		additionalParams: {
+			// 			// Add any additional OAuth parameters your provider requires
+			// 		}
+			// 	}
+			// },
 		]
 
 		// Merge authProviders with availableAuthProviders
@@ -95,7 +112,7 @@ export class AuthService {
 			return {
 				name: providerName,
 				config: provider.config,
-				provider: new ProviderClass(provider.config),
+				provider: new ProviderClass(provider.config as any), // Type assertion for flexibility
 			}
 		})
 
