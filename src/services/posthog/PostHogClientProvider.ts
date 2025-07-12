@@ -1,15 +1,21 @@
-import { PostHog } from "posthog-node"
-import { posthogConfig } from "@/shared/services/config/posthog-config"
+// import { PostHog } from "posthog-node"
+// import { posthogConfig } from "@/shared/services/config/posthog-config"
 
 class PostHogClientProvider {
 	private static instance: PostHogClientProvider
-	private client: PostHog
+	private client: any
 
 	private constructor() {
-		this.client = new PostHog(posthogConfig.apiKey, {
-			host: posthogConfig.host,
-			enableExceptionAutocapture: false,
-		})
+		this.client = {
+			capture: () => {},
+			identify: () => {},
+			isFeatureEnabled: () => false,
+			reloadFeatureFlags: async () => {},
+			shutdown: async () => {},
+			optIn: () => {},
+			optOut: () => {},
+			getFeatureFlagPayload: async () => ({ enabled: false }),
+		}
 	}
 
 	public static getInstance(): PostHogClientProvider {
@@ -19,7 +25,7 @@ class PostHogClientProvider {
 		return PostHogClientProvider.instance
 	}
 
-	public getClient(): PostHog {
+	public getClient(): any {
 		return this.client
 	}
 

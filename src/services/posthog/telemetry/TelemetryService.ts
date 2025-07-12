@@ -1,4 +1,4 @@
-import { PostHog } from "posthog-node"
+// import { PostHog } from "posthog-node"
 import * as vscode from "vscode"
 import { version as extensionVersion } from "../../../../package.json"
 
@@ -100,7 +100,7 @@ class TelemetryService {
 	/** Singleton instance of the TelemetryService */
 	private static instance: TelemetryService
 	/** PostHog client instance for sending analytics events */
-	private client: PostHog
+	private client: any
 	/** Unique identifier for the current VSCode instance */
 	public distinctId: string = vscode.env.machineId
 	/** Whether telemetry is currently enabled based on user and VSCode settings */
@@ -772,7 +772,7 @@ class TelemetryService {
 	}
 
 	public async shutdown(): Promise<void> {
-		await this.client.shutdown()
+		// The client is now a mock, so no explicit shutdown needed
 	}
 }
 

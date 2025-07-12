@@ -1,9 +1,9 @@
-import { PostHog } from "posthog-node"
+// import { PostHog } from "posthog-node"
 import { posthogClientProvider } from "../PostHogClientProvider"
 
 class FeatureFlagsService {
 	private static instance: FeatureFlagsService
-	private readonly client: PostHog
+	private readonly client: any
 
 	private constructor() {
 		// Get the shared client
