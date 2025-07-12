@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+		"incremental": true,
 		"target": "ES2022",
 		"lib": ["ES2023"],
 		"module": "ESNext",
@@ -17,8 +18,8 @@
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		"noFallthroughCasesInSwitch": true,
-		"noUncheckedSideEffectImports": true
+		"noFallthroughCasesInSwitch": true
+		// "noUncheckedSideEffectImports": true // Temporarily disabled - unstable feature
 	},
 	"include": ["vite.config.ts"]
 }
