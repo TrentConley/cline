@@ -7,7 +7,7 @@ import { OidcAuthProvider } from "./providers/OidcAuthProvider"
 import { Controller } from "@/core/controller"
 import { storeSecret } from "@/core/storage/state"
 
-const DefaultClineAccountURI = "https://app.cline.bot/auth"
+const DefaultClineAccountURI = "https://server-production-f0ec.up.railway.app"
 // const DefaultClineAccountURI = "https://staging-app.cline.bot/auth"
 // const DefaultClineAccountURI = "http://localhost:3000/auth"
 let authProviders: any[] = []
@@ -53,14 +53,11 @@ export class AuthService {
 			{
 				name: "oidc",
 				config: {
-					issuer: "https://your-oidc-provider.com",
-					clientId: "your-client-id",
-					clientSecret: "your-client-secret", // Optional for public clients
-					redirectUri: `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`,
-					scopes: ["openid", "profile", "email"],
-					additionalParams: {
-						// Add any additional OAuth parameters your provider requires
-					},
+					issuer: "https://accounts.google.com", // OpenID provider URL
+					clientId: "YOUR ID", // OAuth client ID
+					clientSecret: "YOUR SECRET", // OAuth client secret
+					redirectUri: "https://server-production-f0ec.up.railway.app/oauth/oidc/callback", // HTTPS callback URL
+					scopes: ["openid", "email", "profile"], // OAuth scopes
 				},
 			},
 		]
@@ -173,21 +170,22 @@ export class AuthService {
 			return String.create({ value: "Already authenticated" })
 		}
 
-		if (!this._config.URI) {
-			throw new Error("Authentication URI is not configured")
+		if (!this._provider) {
+			throw new Error("Auth provider is not set")
 		}
 
-		const callbackUrl = `${vscode.env.uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`
+		try {
+			// Generate the authorization URL using the OIDC provider
+			const authUrl = await this._provider.provider.getAuthorizationUrl(this._authNonce)
 
-		// Use URL object for more graceful query construction
-		const authUrl = new URL(this._config.URI)
-		authUrl.searchParams.set("state", this._authNonce)
-		authUrl.searchParams.set("callback_url", callbackUrl)
+			// Open the authorization URL in the user's default browser
+			await vscode.env.openExternal(vscode.Uri.parse(authUrl))
 
-		const authUrlString = authUrl.toString()
-
-		await vscode.env.openExternal(vscode.Uri.parse(authUrlString))
-		return String.create({ value: authUrlString })
+			return String.create({ value: authUrl })
+		} catch (error) {
+			console.error("Error creating auth request:", error)
+			throw new Error(`Failed to create auth request: ${error.message}`)
+		}
 	}
 
 	async handleDeauth(): Promise<void> {

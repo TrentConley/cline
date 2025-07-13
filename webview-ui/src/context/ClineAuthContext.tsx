@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
-import { StateServiceClient } from "@/services/grpc-client"
+import { StateServiceClient, AccountServiceClient } from "@/services/grpc-client"
 import { EmptyRequest } from "@shared/proto/common"
 
 // Define User type (you may need to adjust this based on your actual User type)
@@ -36,6 +36,8 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 						const stateData = JSON.parse(response.stateJson)
 						if (stateData.userInfo) {
 							setUser(stateData.userInfo)
+						} else {
+							handleSignIn()
 						}
 					} catch (error) {
 						console.error("Error parsing state JSON:", error)
@@ -61,6 +63,7 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 			// This will trigger the OIDC authentication flow
 			// The backend will handle the OIDC provider authentication
 			console.log("Initiating OIDC authentication")
+			await AccountServiceClient.accountLoginClicked(EmptyRequest.create())
 			// The actual authentication is handled by the backend AuthService
 			// when the user clicks the sign-in button
 		} catch (error) {
