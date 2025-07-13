@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { EmptyRequest, String } from "../../shared/proto/common"
 import { AuthState } from "../../shared/proto/account"
 import { StreamingResponseHandler, getRequestRegistry } from "@/core/controller/grpc-handler"
-import { OidcAuthProvider } from "./providers/OidcAuthProvider"
+import { OidcAuthProvider, OidcTokenResponse } from "./providers/OidcAuthProvider"
 import { Controller } from "@/core/controller"
 import { storeSecret } from "@/core/storage/state"
 
@@ -211,6 +211,24 @@ export class AuthService {
 
 		try {
 			this._user = await this._provider.provider.signIn(this._context, token, provider)
+			this._authenticated = true
+
+			await this.sendAuthStatusUpdate()
+			this.setupAutoRefreshAuth()
+			return this._user
+		} catch (error) {
+			console.error("Error signing in with custom token:", error)
+			throw error
+		}
+	}
+
+	async handleAuthCallbackWithTokens(tokens: OidcTokenResponse): Promise<void> {
+		if (!this._provider) {
+			throw new Error("Auth provider is not set")
+		}
+
+		try {
+			this._user = await this._provider.provider.signInWithTokens(this._context, tokens)
 			this._authenticated = true
 
 			await this.sendAuthStatusUpdate()

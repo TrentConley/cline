@@ -45,6 +45,20 @@ export interface OidcDiscoveryDocument {
 	end_session_endpoint?: string
 }
 
+function decodeJwtPayload(token: string): any {
+	try {
+		const payload = token.split(".")[1]
+		if (!payload) {
+			return null
+		}
+		const decoded = Buffer.from(payload, "base64").toString("utf8")
+		return JSON.parse(decoded)
+	} catch (error) {
+		console.error("Error decoding JWT payload:", error)
+		return null
+	}
+}
+
 export class OidcAuthProvider {
 	private _config: OidcConfig
 	private _discoveryDocument: OidcDiscoveryDocument | null = null
@@ -354,6 +368,36 @@ export class OidcAuthProvider {
 			return userInfo
 		} catch (error) {
 			ErrorService.logMessage("OIDC sign-in error", "error")
+			ErrorService.logException(error)
+			throw error
+		}
+	}
+
+	/**
+	 * Signs in the user using tokens received from the callback
+	 */
+	async signInWithTokens(context: ExtensionContext, tokens: OidcTokenResponse): Promise<OidcUserInfo> {
+		try {
+			this._tokens = tokens
+			// NOTE: In a production environment, you should validate the id_token signature and claims here.
+			// For this implementation, we are trusting the token from the callback server.
+			const userInfoFromToken = decodeJwtPayload(tokens.id_token)
+
+			if (!userInfoFromToken) {
+				throw new Error("Invalid ID token received.")
+			}
+
+			// You can either trust the user info from the id_token or fetch it from the userinfo endpoint
+			// Fetching from the endpoint is generally more reliable.
+			const userInfo = await this.getUserInfo(tokens.access_token)
+			this._currentUser = userInfo
+
+			// Store credentials
+			await this.storeAuthCredential(context, tokens, userInfo)
+
+			return userInfo
+		} catch (error) {
+			ErrorService.logMessage("OIDC sign-in with token error", "error")
 			ErrorService.logException(error)
 			throw error
 		}

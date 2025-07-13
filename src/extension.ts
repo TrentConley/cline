@@ -36,6 +36,7 @@ import { vscodeHostBridgeClient } from "@/hosts/vscode/client/host-grpc-client"
 import { VscodeWebviewProvider } from "./core/webview/VscodeWebviewProvider"
 import { ExtensionContext } from "vscode"
 import { AuthService } from "./services/auth/AuthService"
+import { OidcTokenResponse } from "./services/auth/providers/OidcAuthProvider"
 import { writeTextToClipboard, readTextFromClipboard } from "@/utils/env"
 import { getHostBridgeProvider } from "@hosts/host-providers"
 import { ShowMessageRequest, ShowMessageType } from "./shared/proto/host/window"
@@ -303,14 +304,23 @@ export async function activate(context: vscode.ExtensionContext) {
 				const authService = AuthService.getInstance()
 				console.log("Auth callback received:", uri.toString())
 
-				const code = query.get("code") // For OIDC authorization code flow
+				// Parse tokens from query parameters
+				const accessToken = query.get("access_token")
+				const idToken = query.get("id_token")
+				const refreshToken = query.get("refresh_token")
+				const tokenType = query.get("token_type")
+				const expiresIn = query.get("expires_in")
+				const scope = query.get("scope")
 				const state = query.get("state")
-				const provider = query.get("provider")
 
 				console.log("Auth callback received:", {
-					code: code,
+					accessToken: accessToken ? "present" : "missing",
+					idToken: idToken ? "present" : "missing",
+					refreshToken: refreshToken ? "present" : "missing",
+					tokenType: tokenType,
+					expiresIn: expiresIn,
+					scope: scope,
 					state: state,
-					provider: provider,
 				})
 
 				// Ask user to confirm on state mismatch. This enables signins initiated from
@@ -330,9 +340,18 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 
-				// Handle OIDC authorization code flow
-				if (code) {
-					await visibleWebview?.controller.handleAuthCallback(code, "oidc")
+				// Handle OIDC token response
+				if (accessToken && idToken) {
+					const tokens: OidcTokenResponse = {
+						access_token: accessToken,
+						id_token: idToken,
+						refresh_token: refreshToken || undefined,
+						token_type: tokenType || "Bearer",
+						expires_in: expiresIn ? parseInt(expiresIn) : 3600,
+						scope: scope || undefined,
+					}
+
+					await authService.handleAuthCallbackWithTokens(tokens)
 				}
 				break
 			}
@@ -340,13 +359,24 @@ export async function activate(context: vscode.ExtensionContext) {
 				const authService = AuthService.getInstance()
 				console.log("OIDC callback received:", uri.toString())
 
-				const code = query.get("code")
+				// Parse tokens from query parameters
+				const accessToken = query.get("access_token")
+				const idToken = query.get("id_token")
+				const refreshToken = query.get("refresh_token")
+				const tokenType = query.get("token_type")
+				const expiresIn = query.get("expires_in")
+				const scope = query.get("scope")
 				const state = query.get("state")
 				const error = query.get("error")
 				const errorDescription = query.get("error_description")
 
 				console.log("OIDC callback received:", {
-					code: code,
+					accessToken: accessToken ? "present" : "missing",
+					idToken: idToken ? "present" : "missing",
+					refreshToken: refreshToken ? "present" : "missing",
+					tokenType: tokenType,
+					expiresIn: expiresIn,
+					scope: scope,
 					state: state,
 					error: error,
 					errorDescription: errorDescription,
@@ -379,8 +409,18 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				}
 
-				if (code) {
-					await visibleWebview?.controller.handleAuthCallback(code, "oidc")
+				// Handle OIDC token response
+				if (accessToken && idToken) {
+					const tokens: OidcTokenResponse = {
+						access_token: accessToken,
+						id_token: idToken,
+						refresh_token: refreshToken || undefined,
+						token_type: tokenType || "Bearer",
+						expires_in: expiresIn ? parseInt(expiresIn) : 3600,
+						scope: scope || undefined,
+					}
+
+					await authService.handleAuthCallbackWithTokens(tokens)
 				}
 				break
 			}
