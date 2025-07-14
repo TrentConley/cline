@@ -288,10 +288,37 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		const path = uri.path
 		const query = new URLSearchParams(uri.query.replace(/\+/g, "%2B"))
-		const visibleWebview = WebviewProvider.getVisibleInstance()
-		if (!visibleWebview) {
-			return
+
+		// For auth-related paths, ensure we have a visible webview
+		if (path === "/auth" || path === "/oidc") {
+			let visibleWebview = WebviewProvider.getVisibleInstance()
+			if (!visibleWebview) {
+				console.log("No visible webview for auth callback, opening Cline...")
+				// Open Cline in sidebar or tab
+				await vscode.commands.executeCommand("cline.focusChatInput")
+				// Wait for webview to become visible
+				await pWaitFor(() => !!WebviewProvider.getVisibleInstance(), { timeout: 5000 })
+				visibleWebview = WebviewProvider.getVisibleInstance()
+				if (!visibleWebview) {
+					console.error("Failed to open Cline for auth callback")
+					await getHostBridgeProvider().windowClient.showMessage(
+						ShowMessageRequest.create({
+							type: ShowMessageType.ERROR,
+							message: "Failed to open Cline for authentication. Please try again.",
+						}),
+					)
+					return
+				}
+			}
+		} else {
+			const visibleWebview = WebviewProvider.getVisibleInstance()
+			if (!visibleWebview) {
+				return
+			}
 		}
+
+		const visibleWebview = WebviewProvider.getVisibleInstance()
+
 		switch (path) {
 			case "/openrouter": {
 				const code = query.get("code")

@@ -211,6 +211,30 @@ export class OidcAuthProvider {
 	}
 
 	/**
+	 * Gets the token expiration time in milliseconds
+	 */
+	async getTokenExpirationTime(context: ExtensionContext): Promise<number | null> {
+		if (!this._tokens || !this._tokens.expires_in) {
+			return null
+		}
+
+		// Get the stored credential to access the timestamp
+		try {
+			const credentialJSON = await getSecret(context, "clineAccountId")
+			if (credentialJSON) {
+				const credential = JSON.parse(credentialJSON)
+				if (credential.timestamp) {
+					return credential.timestamp + this._tokens.expires_in * 1000
+				}
+			}
+		} catch (error) {
+			console.error("Error getting token expiration time:", error)
+		}
+
+		return null
+	}
+
+	/**
 	 * Refreshes the authentication token using the refresh token
 	 */
 	async refreshAuthToken(): Promise<string | null> {
