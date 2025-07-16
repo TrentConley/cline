@@ -34,10 +34,15 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 				if (response && response.stateJson) {
 					try {
 						const stateData = JSON.parse(response.stateJson)
+						console.log("Extension: ClineAuthContext: Parsed state data keys:", Object.keys(stateData))
+						console.log("Extension: ClineAuthContext: userInfo in state:", stateData.userInfo)
 						if (stateData.userInfo) {
+							console.log("Extension: ClineAuthContext: Setting user from state update:", stateData.userInfo)
 							setUser(stateData.userInfo)
 						} else {
-							handleSignIn()
+							console.log("Extension: ClineAuthContext: No userInfo in state, clearing user")
+							// Clear user if no userInfo is present
+							setUser(null)
 						}
 					} catch (error) {
 						console.error("Error parsing state JSON:", error)
@@ -56,6 +61,51 @@ export const ClineAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 		return () => {
 			cancelSubscription()
 		}
+	}, [])
+
+	// Fetch initial state on mount
+	useEffect(() => {
+		const fetchInitialState = async () => {
+			try {
+				console.log("Extension: ClineAuthContext: Fetching initial state...")
+				const response = await StateServiceClient.getLatestState(EmptyRequest.create())
+				console.log("Extension: ClineAuthContext: Initial state response:", response)
+				if (response && response.stateJson) {
+					const stateData = JSON.parse(response.stateJson)
+					console.log("Extension: ClineAuthContext: Initial state keys:", Object.keys(stateData))
+					console.log("Extension: ClineAuthContext: Initial userInfo:", stateData.userInfo)
+					if (stateData.userInfo) {
+						console.log("Extension: ClineAuthContext: Setting initial user from state:", stateData.userInfo)
+						setUser(stateData.userInfo)
+					} else {
+						console.log("Extension: ClineAuthContext: No userInfo in initial state")
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching initial state:", error)
+			}
+		}
+
+		const checkAuthStatus = async () => {
+			try {
+				console.log("Extension: ClineAuthContext: Checking auth status directly...")
+				const authResponse = await AccountServiceClient.getCurrentAuthStatus(EmptyRequest.create())
+				console.log("Extension: ClineAuthContext: Auth status response:", authResponse)
+				if (authResponse && authResponse.user) {
+					console.log("Extension: ClineAuthContext: Setting user from auth status:", authResponse.user)
+					setUser(authResponse.user)
+				} else {
+					console.log("Extension: ClineAuthContext: No user in auth status")
+				}
+			} catch (error) {
+				console.error("Error checking auth status:", error)
+			}
+		}
+
+		// Check both state and auth service
+		Promise.all([fetchInitialState(), checkAuthStatus()]).then(() => {
+			console.log("Extension: ClineAuthContext: Initial checks completed")
+		})
 	}, [])
 
 	const handleSignIn = useCallback(async () => {

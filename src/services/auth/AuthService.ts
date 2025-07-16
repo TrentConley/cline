@@ -175,24 +175,28 @@ export class AuthService {
 
 		if (this._authenticated) {
 			console.log("AuthService: User already authenticated, forcing UI update")
-			// Force update the UI with current auth state
-			await this.sendAuthStatusUpdate()
 
-			// Also directly update the userInfo in global state
+			// Get the proper user info
+			const userInfo = this._provider.provider.convertUserData
+				? this._provider.provider.convertUserData(this._user)
+				: this._user
+
+			// Ensure userInfo is properly set in global state
 			if (this._user && this._context) {
-				const userInfo = this._provider.provider.convertUserData
-					? this._provider.provider.convertUserData(this._user)
-					: this._user
+				console.log("AuthService: Updating userInfo in global state:", userInfo)
 				await updateGlobalState(this._context, "userInfo", userInfo)
-
-				// Force webview update
-				const { WebviewProvider } = await import("@/core/webview")
-				const visibleWebview = WebviewProvider.getVisibleInstance()
-				if (visibleWebview && visibleWebview.controller) {
-					console.log("AuthService: Forcing webview state update")
-					await visibleWebview.controller.postStateToWebview()
-				}
 			}
+
+			// Force webview update after userInfo is set
+			const { WebviewProvider } = await import("@/core/webview")
+			const visibleWebview = WebviewProvider.getVisibleInstance()
+			if (visibleWebview && visibleWebview.controller) {
+				console.log("AuthService: Forcing webview state update")
+				await visibleWebview.controller.postStateToWebview()
+			}
+
+			// Send auth status update (for any auth-specific subscribers)
+			await this.sendAuthStatusUpdate()
 
 			return String.create({ value: "Already authenticated" })
 		}
@@ -203,11 +207,17 @@ export class AuthService {
 		}
 
 		// --- START DEBUGGING MODIFICATION ---
-		// Commenting out the real OAuth flow and redirecting to example.com instead.
-		console.log("AuthService: [DEBUG] Bypassing Google OAuth. Redirecting to example.com for debugging.")
-		const debugUrl = "https://example.com"
-		await vscode.env.openExternal(vscode.Uri.parse(debugUrl))
-		return String.create({ value: debugUrl })
+		// Redirect to Railway server which will handle the OAuth flow with Google
+		console.log("AuthService: Redirecting to Railway server for OAuth flow")
+		console.log("AuthService: Using state nonce:", this._authNonce)
+
+		// Build the URL to your Railway server's /login endpoint
+		const serverLoginUrl = `${this._config.URI}/login?state=${encodeURIComponent(this._authNonce)}`
+
+		console.log("AuthService: Opening OAuth URL:", serverLoginUrl)
+		await vscode.env.openExternal(vscode.Uri.parse(serverLoginUrl))
+
+		return String.create({ value: serverLoginUrl })
 		// --- END DEBUGGING MODIFICATION ---
 
 		/*
@@ -286,6 +296,13 @@ export class AuthService {
 				name: this._user?.displayName || this._user?.name || "unknown",
 			})
 
+			// Ensure userInfo is set in global state
+			const userInfo = this._provider.provider.convertUserData
+				? this._provider.provider.convertUserData(this._user)
+				: this._user
+			console.log("AuthService: Setting userInfo in global state after OAuth callback:", userInfo)
+			await updateGlobalState(this._context, "userInfo", userInfo)
+
 			console.log("AuthService: Sending auth status update...")
 			await this.sendAuthStatusUpdate()
 
@@ -348,6 +365,14 @@ export class AuthService {
 					name: this._user?.displayName || this._user?.name || "unknown",
 				})
 				this._authenticated = true
+
+				// Ensure userInfo is set in global state when auth is restored
+				const userInfo = this._provider.provider.convertUserData
+					? this._provider.provider.convertUserData(this._user)
+					: this._user
+				console.log("AuthService: Setting userInfo in global state after restore:", userInfo)
+				await updateGlobalState(this._context, "userInfo", userInfo)
+
 				await this.sendAuthStatusUpdate()
 				await this.setupAutoRefreshAuth()
 			} else {
@@ -429,7 +454,7 @@ export class AuthService {
 	async forceLogout(): Promise<void> {
 		console.log("AuthService: Force logout initiated")
 
-		// Clear authentication state
+		// Clear authentication state FIRST
 		this._authenticated = false
 		this._user = null
 
@@ -439,12 +464,17 @@ export class AuthService {
 		// Clear userInfo from global state
 		if (this._context) {
 			await updateGlobalState(this._context, "userInfo", undefined)
+			// Also clear the API provider to ensure UI shows sign-in
+			await updateGlobalState(this._context, "apiProvider", undefined)
 		}
 
 		// Send auth status update to notify UI
 		await this.sendAuthStatusUpdate()
 
-		// Force webview update
+		// Clear any active subscriptions
+		this._activeAuthStatusUpdateSubscriptions.clear()
+
+		// Force webview update to ensure UI reflects logout
 		try {
 			const { WebviewProvider } = await import("@/core/webview")
 			const visibleWebview = WebviewProvider.getVisibleInstance()

@@ -24,6 +24,9 @@ service AccountService {
   // Updates the user info in global state and returns the updated value.
   rpc authStateChanged(AuthStateChangedRequest) 
       returns (AuthState);
+  
+  // Get current authentication status
+  rpc getCurrentAuthStatus(EmptyRequest) returns (AuthState);
     
   // Fetches all user credits data
   // (balance, usage transactions, payment transactions)
