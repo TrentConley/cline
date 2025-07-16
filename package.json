@@ -125,6 +125,11 @@
 		},
 		"commands": [
 			{
+				"command": "cline.debug.forceLogout",
+				"title": "Cline: Force Logout (Debug)",
+				"category": "Cline"
+			},
+			{
 				"command": "cline.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"

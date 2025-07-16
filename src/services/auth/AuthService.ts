@@ -202,6 +202,15 @@ export class AuthService {
 			throw new Error("Auth provider is not set")
 		}
 
+		// --- START DEBUGGING MODIFICATION ---
+		// Commenting out the real OAuth flow and redirecting to example.com instead.
+		console.log("AuthService: [DEBUG] Bypassing Google OAuth. Redirecting to example.com for debugging.")
+		const debugUrl = "https://example.com"
+		await vscode.env.openExternal(vscode.Uri.parse(debugUrl))
+		return String.create({ value: debugUrl })
+		// --- END DEBUGGING MODIFICATION ---
+
+		/*
 		try {
 			console.log("AuthService: Generating authorization URL with nonce:", this._authNonce)
 			// Generate the authorization URL using the OIDC provider
@@ -224,6 +233,7 @@ export class AuthService {
 			})
 			throw new Error(`Failed to create auth request: ${error.message}`)
 		}
+		*/
 	}
 
 	async handleDeauth(): Promise<void> {

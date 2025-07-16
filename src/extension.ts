@@ -827,6 +827,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	// Register a command to manually clear auth state for debugging
+	context.subscriptions.push(
+		vscode.commands.registerCommand("cline.debug.forceLogout", async () => {
+			try {
+				const authService = AuthService.getInstance()
+				if (authService) {
+					await authService.forceLogout()
+					vscode.window.showInformationMessage("Cline authentication state has been cleared.")
+				} else {
+					vscode.window.showWarningMessage("AuthService instance not available.")
+				}
+			} catch (error: any) {
+				vscode.window.showErrorMessage(`Failed to force logout: ${error.message}`)
+				console.error("Error during force logout command:", error)
+			}
+		}),
+	)
+
 	context.subscriptions.push(
 		context.secrets.onDidChange((event) => {
 			if (event.key === "clineAccountId") {
