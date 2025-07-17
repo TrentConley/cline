@@ -86,18 +86,44 @@ export class OidcAuthProvider {
 	 */
 	private async discoverEndpoints(): Promise<OidcDiscoveryDocument> {
 		if (this._discoveryDocument) {
+			console.log("OIDC: Using cached discovery document")
 			return this._discoveryDocument
 		}
 
+		console.log("OIDC: Starting endpoint discovery...")
+		console.log("OIDC: Issuer URL:", this._config.issuer)
+
 		try {
 			const wellKnownUrl = `${this._config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`
+			console.log("OIDC: Discovery URL:", wellKnownUrl)
+
+			console.log("OIDC: Making HTTP request to discovery endpoint...")
+			const startTime = Date.now()
 			const response = await axios.get<OidcDiscoveryDocument>(wellKnownUrl, {
 				timeout: 10000,
+			})
+			const endTime = Date.now()
+
+			console.log(`OIDC: Discovery request completed in ${endTime - startTime}ms`)
+			console.log("OIDC: Discovery response status:", response.status)
+			console.log("OIDC: Discovery document endpoints:", {
+				authorization_endpoint: response.data.authorization_endpoint,
+				token_endpoint: response.data.token_endpoint,
+				userinfo_endpoint: response.data.userinfo_endpoint,
+				issuer: response.data.issuer,
 			})
 
 			this._discoveryDocument = response.data
 			return this._discoveryDocument
 		} catch (error) {
+			console.error("OIDC: Discovery failed with error:", error)
+			console.error("OIDC: Error details:", {
+				message: error.message,
+				code: error.code,
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				data: error.response?.data,
+			})
 			ErrorService.logMessage("OIDC discovery failed", "error")
 			ErrorService.logException(error)
 			throw new Error(`Failed to discover OIDC endpoints: ${error.message}`)
@@ -161,19 +187,40 @@ export class OidcAuthProvider {
 	 * Fetches user information using the access token
 	 */
 	async getUserInfo(accessToken: string): Promise<OidcUserInfo> {
+		console.log("OIDC: getUserInfo called, discovering endpoints...")
 		const discovery = await this.discoverEndpoints()
+		console.log("OIDC: Using userinfo endpoint:", discovery.userinfo_endpoint)
 
 		try {
+			console.log("OIDC: Making userinfo request with token:", `${accessToken.substring(0, 10)}...`)
+			const startTime = Date.now()
 			const response = await axios.get<OidcUserInfo>(discovery.userinfo_endpoint, {
 				headers: {
 					Authorization: `Bearer ${accessToken}`,
 				},
 				timeout: 10000,
 			})
+			const endTime = Date.now()
+
+			console.log(`OIDC: Userinfo request completed in ${endTime - startTime}ms`)
+			console.log("OIDC: Userinfo response status:", response.status)
+			console.log("OIDC: User data received:", {
+				sub: response.data.sub,
+				email: response.data.email,
+				name: response.data.name || response.data.given_name + " " + response.data.family_name,
+			})
 
 			this._currentUser = response.data
 			return response.data
 		} catch (error) {
+			console.error("OIDC: Userinfo fetch failed:", error)
+			console.error("OIDC: Userinfo error details:", {
+				message: error.message,
+				code: error.code,
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				data: error.response?.data,
+			})
 			ErrorService.logMessage("OIDC userinfo fetch failed", "error")
 			ErrorService.logException(error)
 			throw new Error(`Failed to fetch user info: ${error.response?.data?.error_description || error.message}`)
@@ -423,6 +470,37 @@ export class OidcAuthProvider {
 		} catch (error) {
 			ErrorService.logMessage("OIDC sign-in with token error", "error")
 			ErrorService.logException(error)
+			throw error
+		}
+	}
+
+	/**
+	 * Test network connectivity to OIDC endpoints for debugging
+	 */
+	async testConnectivity(): Promise<void> {
+		console.log("OIDC: Testing network connectivity...")
+
+		const wellKnownUrl = `${this._config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`
+		console.log("OIDC: Testing connectivity to:", wellKnownUrl)
+
+		try {
+			const startTime = Date.now()
+			const response = await axios.head(wellKnownUrl, {
+				timeout: 5000,
+			})
+			const endTime = Date.now()
+
+			console.log(`OIDC: Connectivity test PASSED - Response time: ${endTime - startTime}ms`)
+			console.log("OIDC: Response headers:", response.headers)
+		} catch (error) {
+			console.error("OIDC: Connectivity test FAILED:", error.message)
+			if (error.code === "ENOTFOUND") {
+				console.error("OIDC: DNS resolution failed - check issuer URL")
+			} else if (error.code === "ECONNREFUSED") {
+				console.error("OIDC: Connection refused - server may be down")
+			} else if (error.code === "ETIMEDOUT") {
+				console.error("OIDC: Connection timeout - network or firewall issue")
+			}
 			throw error
 		}
 	}

@@ -53,11 +53,18 @@ export class AuthService {
 			{
 				name: "oidc",
 				config: {
-					issuer: "https://accounts.google.com", // OpenID provider URL
-					clientId: "YOUR_CLIENT_ID", // OAuth client ID
+					// IMPORTANT: This MUST match your actual OIDC provider's issuer URL
+					// If you're using a different provider than Google, update this URL
+					// Examples:
+					// - Azure AD: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+					// - Okta: "https://your-org.okta.com/oauth2/default"
+					// - Auth0: "https://your-tenant.auth0.com"
+					// - Custom provider: "https://your-provider.com"
+					issuer: "https://accounts.google.com", // TODO: UPDATE THIS to your actual OIDC provider URL
+					clientId: "YOUR_CLINET_ID", // OAuth client ID
 					clientSecret: "YOUR_CLIENT_SECRET", // OAuth client secret
 					redirectUri: "https://server-production-f0ec.up.railway.app/oauth/oidc/callback", // HTTPS callback URL
-					scopes: ["openid", "email", "profile"], // OAuth scopes
+					scopes: ["openid", "email", "profile", "offline_access"], // Added offline_access for refresh tokens
 				},
 			},
 		]
@@ -279,6 +286,35 @@ export class AuthService {
 			expires_in: tokens.expires_in,
 			scope: tokens.scope,
 		})
+
+		// Additional debugging for refresh token issue
+		if (!tokens.refresh_token) {
+			console.warn("AuthService: MISSING REFRESH TOKEN - This could be caused by:")
+			console.warn("1. OIDC provider not configured to return refresh tokens")
+			console.warn("2. Missing 'offline_access' scope in OAuth request")
+			console.warn("3. Provider requires additional parameters (e.g., access_type=offline)")
+			console.warn("4. Client not configured as 'confidential' in OAuth provider")
+			console.warn("Current scopes requested:", this._provider?.config?.scopes)
+		}
+
+		// Debug token validation
+		if (tokens.access_token) {
+			try {
+				// Try to decode the access token to see what's inside (without verification)
+				const [header, payload] = tokens.access_token.split(".")
+				if (header && payload) {
+					const decodedPayload = JSON.parse(atob(payload))
+					console.log("AuthService: Access token payload (decoded):", {
+						iss: decodedPayload.iss,
+						aud: decodedPayload.aud,
+						exp: decodedPayload.exp,
+						scope: decodedPayload.scope || decodedPayload.scp,
+					})
+				}
+			} catch (e) {
+				console.log("AuthService: Access token is not a JWT or couldn't be decoded")
+			}
+		}
 
 		if (!this._provider) {
 			console.error("AuthService: Auth provider is not set")
