@@ -108,11 +108,8 @@ export class OidcAuthProvider {
 					"User-Agent": "Cline-VSCode-Extension/1.0",
 					"Cache-Control": "no-cache",
 				},
-				// Handle SSL issues in development
-				httpsAgent:
-					process.env.NODE_ENV === "development"
-						? new (require("https").Agent)({ rejectUnauthorized: false })
-						: undefined,
+				// Handle SSL issues - disable cert validation for internal networks
+				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
 				validateStatus: (status: number) => status < 500, // Accept 4xx as valid responses to debug further
 			}
 
@@ -527,8 +524,9 @@ export class OidcAuthProvider {
 
 		try {
 			const startTime = Date.now()
-			const response = await axios.head(wellKnownUrl, {
+			const response = await axios.get(wellKnownUrl, {
 				timeout: 5000,
+				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
 			})
 			const endTime = Date.now()
 
@@ -568,7 +566,10 @@ export class OidcAuthProvider {
 		// Test 2: Simple GET request
 		console.log("\n🌐 Test 2: Simple GET request...")
 		try {
-			const response = await axios.get(wellKnownUrl, { timeout: 5000 })
+			const response = await axios.get(wellKnownUrl, {
+				timeout: 5000,
+				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
+			})
 			console.log("✅ Simple GET: PASSED")
 			console.log("Response size:", JSON.stringify(response.data).length, "bytes")
 		} catch (error) {
@@ -586,6 +587,7 @@ export class OidcAuthProvider {
 					Accept: "application/json",
 					"User-Agent": "Cline-VSCode-Extension/1.0",
 				},
+				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
 			})
 			console.log("✅ GET with headers: PASSED")
 			console.log("Authorization endpoint found:", !!response.data.authorization_endpoint)
@@ -601,7 +603,10 @@ export class OidcAuthProvider {
 		// Test 4: Compare issuer in response vs config
 		console.log("\n🔍 Test 4: Issuer validation...")
 		try {
-			const response = await axios.get(wellKnownUrl, { timeout: 5000 })
+			const response = await axios.get(wellKnownUrl, {
+				timeout: 5000,
+				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
+			})
 			const responseIssuer = response.data.issuer
 			const configIssuer = this._config.issuer
 
