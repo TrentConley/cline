@@ -99,18 +99,16 @@ export class OidcAuthProvider {
 
 			// Try with enhanced axios configuration
 			console.log("OIDC: Making HTTP request to discovery endpoint...")
+			console.log("OIDC: NODE_TLS_REJECT_UNAUTHORIZED =", process.env.NODE_TLS_REJECT_UNAUTHORIZED)
 			const startTime = Date.now()
 
 			const axiosConfig = {
-				timeout: 15000, // Increased timeout
+				timeout: 10000,
 				headers: {
 					Accept: "application/json",
-					"User-Agent": "Cline-VSCode-Extension/1.0",
-					"Cache-Control": "no-cache",
+					"User-Agent": "Node-Test/1.0",
 				},
-				// Handle SSL issues - disable cert validation for internal networks
-				httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }),
-				validateStatus: (status: number) => status < 500, // Accept 4xx as valid responses to debug further
+				validateStatus: (status: number) => status < 500,
 			}
 
 			console.log("OIDC: Request config:", {
