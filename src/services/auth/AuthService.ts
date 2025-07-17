@@ -60,7 +60,7 @@ export class AuthService {
 					// - Okta: "https://your-org.okta.com/oauth2/default"
 					// - Auth0: "https://your-tenant.auth0.com"
 					// - Custom provider: "https://your-provider.com"
-					issuer: "https://accounts.google.com", // TODO: UPDATE THIS to your actual OIDC provider URL
+					issuer: "https://server-production-f0ec.up.railway.app", // Railway server proxies SpaceX auth
 					clientId: "YOUR_CLINET_ID", // OAuth client ID
 					clientSecret: "YOUR_CLIENT_SECRET", // OAuth client secret
 					redirectUri: "https://server-production-f0ec.up.railway.app/oauth/oidc/callback", // HTTPS callback URL

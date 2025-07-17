@@ -1,9 +1,11 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 
-// Disable TLS certificate validation for internal networks (must be early)
+// Configure TLS for internal networks (must be early)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+process.env.NODE_EXTRA_CA_CERTS = "/etc/ssl/certs/custom-ca-bundle.pem"
 console.log("Extension: TLS reject unauthorized set to:", process.env.NODE_TLS_REJECT_UNAUTHORIZED)
+console.log("Extension: NODE_EXTRA_CA_CERTS set to:", process.env.NODE_EXTRA_CA_CERTS)
 
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import * as vscode from "vscode"

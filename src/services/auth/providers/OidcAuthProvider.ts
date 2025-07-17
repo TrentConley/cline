@@ -92,6 +92,8 @@ export class OidcAuthProvider {
 
 		console.log("OIDC: Starting endpoint discovery...")
 		console.log("OIDC: Issuer URL:", this._config.issuer)
+		console.log("OIDC: Process version:", process.version)
+		console.log("OIDC: Platform:", process.platform)
 
 		try {
 			const wellKnownUrl = `${this._config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`
@@ -116,6 +118,26 @@ export class OidcAuthProvider {
 				headers: axiosConfig.headers,
 				url: wellKnownUrl,
 			})
+
+			// Try basic connectivity first
+			console.log("OIDC: Testing basic connectivity with require('http')...")
+			try {
+				const url = require("url")
+				const parsed = url.parse(wellKnownUrl)
+				const httpModule = parsed.protocol === "https:" ? require("https") : require("http")
+
+				await new Promise((resolve, reject) => {
+					const req = httpModule.get(wellKnownUrl, { timeout: 5000 }, (res: any) => {
+						console.log("OIDC: Basic request status:", res.statusCode)
+						resolve(res)
+					})
+					req.on("error", reject)
+					req.on("timeout", () => reject(new Error("Basic request timeout")))
+				})
+				console.log("OIDC: Basic connectivity OK")
+			} catch (basicError) {
+				console.error("OIDC: Basic connectivity failed:", basicError.message)
+			}
 
 			const response = await axios.get<OidcDiscoveryDocument>(wellKnownUrl, axiosConfig)
 			const endTime = Date.now()
