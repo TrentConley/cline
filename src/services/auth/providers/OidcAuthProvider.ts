@@ -97,15 +97,48 @@ export class OidcAuthProvider {
 			const wellKnownUrl = `${this._config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`
 			console.log("OIDC: Discovery URL:", wellKnownUrl)
 
+			// Try with enhanced axios configuration
 			console.log("OIDC: Making HTTP request to discovery endpoint...")
 			const startTime = Date.now()
-			const response = await axios.get<OidcDiscoveryDocument>(wellKnownUrl, {
-				timeout: 10000,
+
+			const axiosConfig = {
+				timeout: 15000, // Increased timeout
+				headers: {
+					Accept: "application/json",
+					"User-Agent": "Cline-VSCode-Extension/1.0",
+					"Cache-Control": "no-cache",
+				},
+				// Handle SSL issues in development
+				httpsAgent:
+					process.env.NODE_ENV === "development"
+						? new (require("https").Agent)({ rejectUnauthorized: false })
+						: undefined,
+				validateStatus: (status: number) => status < 500, // Accept 4xx as valid responses to debug further
+			}
+
+			console.log("OIDC: Request config:", {
+				timeout: axiosConfig.timeout,
+				headers: axiosConfig.headers,
+				url: wellKnownUrl,
 			})
+
+			const response = await axios.get<OidcDiscoveryDocument>(wellKnownUrl, axiosConfig)
 			const endTime = Date.now()
 
 			console.log(`OIDC: Discovery request completed in ${endTime - startTime}ms`)
 			console.log("OIDC: Discovery response status:", response.status)
+			console.log("OIDC: Response headers:", response.headers)
+
+			// Check if we got a successful response
+			if (response.status >= 400) {
+				console.error("OIDC: HTTP error response:", {
+					status: response.status,
+					statusText: response.statusText,
+					data: response.data,
+				})
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+			}
+
 			console.log("OIDC: Discovery document endpoints:", {
 				authorization_endpoint: response.data.authorization_endpoint,
 				token_endpoint: response.data.token_endpoint,
@@ -468,6 +501,15 @@ export class OidcAuthProvider {
 
 			return userInfo
 		} catch (error) {
+			console.error("OIDC: signInWithTokens failed, running diagnostics...")
+
+			// Run diagnostics to help debug the issue
+			try {
+				await this.runDiagnostics()
+			} catch (diagError) {
+				console.error("OIDC: Diagnostics also failed:", diagError.message)
+			}
+
 			ErrorService.logMessage("OIDC sign-in with token error", "error")
 			ErrorService.logException(error)
 			throw error
@@ -503,5 +545,80 @@ export class OidcAuthProvider {
 			}
 			throw error
 		}
+	}
+
+	/**
+	 * Comprehensive diagnostic method to debug discovery issues
+	 */
+	async runDiagnostics(): Promise<void> {
+		const wellKnownUrl = `${this._config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`
+		console.log("🔍 OIDC DIAGNOSTICS STARTING...")
+		console.log("Target URL:", wellKnownUrl)
+
+		// Test 1: Basic connectivity
+		console.log("\n📡 Test 1: Basic HEAD request...")
+		try {
+			await this.testConnectivity()
+			console.log("✅ Basic connectivity: PASSED")
+		} catch (error) {
+			console.log("❌ Basic connectivity: FAILED")
+			console.error(error.message)
+		}
+
+		// Test 2: Simple GET request
+		console.log("\n🌐 Test 2: Simple GET request...")
+		try {
+			const response = await axios.get(wellKnownUrl, { timeout: 5000 })
+			console.log("✅ Simple GET: PASSED")
+			console.log("Response size:", JSON.stringify(response.data).length, "bytes")
+		} catch (error) {
+			console.log("❌ Simple GET: FAILED")
+			console.error("Error:", error.message)
+			console.error("Code:", error.code)
+		}
+
+		// Test 3: GET with headers
+		console.log("\n📋 Test 3: GET with standard headers...")
+		try {
+			const response = await axios.get(wellKnownUrl, {
+				timeout: 5000,
+				headers: {
+					Accept: "application/json",
+					"User-Agent": "Cline-VSCode-Extension/1.0",
+				},
+			})
+			console.log("✅ GET with headers: PASSED")
+			console.log("Authorization endpoint found:", !!response.data.authorization_endpoint)
+			console.log("Token endpoint found:", !!response.data.token_endpoint)
+			console.log("Userinfo endpoint found:", !!response.data.userinfo_endpoint)
+		} catch (error) {
+			console.log("❌ GET with headers: FAILED")
+			console.error("Error:", error.message)
+			console.error("Status:", error.response?.status)
+			console.error("Response:", error.response?.data)
+		}
+
+		// Test 4: Compare issuer in response vs config
+		console.log("\n🔍 Test 4: Issuer validation...")
+		try {
+			const response = await axios.get(wellKnownUrl, { timeout: 5000 })
+			const responseIssuer = response.data.issuer
+			const configIssuer = this._config.issuer
+
+			console.log("Config issuer:", configIssuer)
+			console.log("Response issuer:", responseIssuer)
+
+			if (responseIssuer === configIssuer) {
+				console.log("✅ Issuer validation: PASSED")
+			} else {
+				console.log("⚠️ Issuer validation: MISMATCH")
+				console.log("This might cause token validation issues!")
+			}
+		} catch (error) {
+			console.log("❌ Issuer validation: FAILED")
+			console.error(error.message)
+		}
+
+		console.log("\n🔍 OIDC DIAGNOSTICS COMPLETED\n")
 	}
 }
